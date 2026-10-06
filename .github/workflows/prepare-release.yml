@@ -1,0 +1,58 @@
+name: Prepare BANOSIV release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Generate package-lock
+        run: |
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+
+      - name: Commit package-lock
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add package-lock.json
+
+          if git diff --cached --quiet; then
+            echo "package-lock.json already up to date."
+            exit 0
+          fi
+
+          git commit -m "chore: add npm lockfile"
+          git push origin HEAD:main
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npm run prisma:generate
+
+      - name: Type check
+        run: npm run check
+
+      - name: Unit tests
+        run: npm run test:unit
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
