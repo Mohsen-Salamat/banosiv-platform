@@ -23,10 +23,16 @@ export class StripeProvider implements PaymentProvider {
     return { redirectUrl: d.url, providerPaymentId: d.id };
   }
 
-  async verify() {
-    throw new ApiError(400, "UNSUPPORTED_OPERATION", "Stripe uses signed webhooks for payment proof.");
+  async verify(
+  _i: { authority: string; amountMinor: number },
+): Promise<{ referenceId: string }> {
+  throw new ApiError(
+    400,
+    "UNSUPPORTED_OPERATION",
+    "Stripe uses signed webhooks for payment proof.",
+  );
   }
-
+  
   async refund(i: { referenceId?: string; amountMinor: number }) {
     if (!this.key || !i.referenceId) throw new ApiError(400, "STRIPE_REFUND_INVALID", "Stripe refund requires a PaymentIntent or Charge reference.");
     const b = new URLSearchParams({ payment_intent: i.referenceId, amount: String(i.amountMinor) });
