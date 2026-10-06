@@ -1,0 +1,50 @@
+services:
+  nextjs:
+    build: .
+    environment:
+      DATABASE_URL: postgresql://banosiv:banosiv@postgres:5432/banosiv
+      REDIS_URL: redis://:banosiv@redis:6379
+      JWT_SECRET: change-me-development-only
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+    depends_on: [postgres, redis]
+    ports: ["3000:3000"]
+    restart: unless-stopped
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: banosiv
+      POSTGRES_USER: banosiv
+      POSTGRES_PASSWORD: banosiv
+    volumes: [postgres-data:/var/lib/postgresql/data]
+    healthcheck: {test: ["CMD-SHELL","pg_isready -U banosiv -d banosiv"], interval: 10s, timeout: 5s, retries: 5}
+  redis:
+    image: redis:8-alpine
+    command: ["redis-server","--requirepass","banosiv"]
+    volumes: [redis-data:/data]
+    healthcheck: {test: ["CMD","redis-cli","-a","banosiv","PING"], interval: 10s, timeout: 5s, retries: 5}
+  bullmq-worker:
+    build: .
+    command: npm run worker
+    environment:
+      DATABASE_URL: postgresql://banosiv:banosiv@postgres:5432/banosiv
+      REDIS_URL: redis://:banosiv@redis:6379
+    depends_on: [postgres, redis]
+    restart: unless-stopped
+  socket-server:
+    build: .
+    command: npm run socket
+    environment:
+      REDIS_URL: redis://:banosiv@redis:6379
+      JWT_SECRET: change-me-development-only
+    depends_on: [redis]
+    ports: ["3001:3001"]
+    restart: unless-stopped
+  caddy:
+    image: caddy:2-alpine
+    volumes: ["./Caddyfile:/etc/caddy/Caddyfile:ro"]
+    ports: ["80:80","443:443"]
+    depends_on: [nextjs, socket-server]
+    restart: always
+volumes:
+  postgres-data:
+  redis-data:

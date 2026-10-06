@@ -1,0 +1,5 @@
+:80 {
+  @socket path /socket.io/*
+  reverse_proxy @socket socket-server:3001
+  reverse_proxy nextjs:3000
+}
