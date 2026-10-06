@@ -1,0 +1,2 @@
+export class ApiError extends Error{constructor(public statusCode:number,public errorCode:string,message:string,public type=`https://banosiv.example/errors/${errorCode.toLowerCase()}`){super(message)}}
+export function problem(error:unknown,instance:string){if(error instanceof ApiError)return{type:error.type,title:error.errorCode,status:error.statusCode,detail:error.message,instance};return{type:"https://banosiv.example/errors/internal-error",title:"Internal Server Error",status:500,detail:"Something went wrong.",instance};}

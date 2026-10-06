@@ -1,0 +1,1 @@
+export function calcTotal(subtotalMinor:number,taxMinor:number,shippingMinor:number,discountMinor:number){const total=subtotalMinor+taxMinor+shippingMinor-discountMinor;if(!Number.isInteger(total)||total<0)throw new Error("Invalid money calculation");return total}

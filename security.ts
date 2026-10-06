@@ -1,0 +1,1 @@
+import {createHash,randomBytes,timingSafeEqual} from "node:crypto";export function sha256(v:string){return createHash("sha256").update(v).digest("hex")}export function randomToken(bytes=32){return randomBytes(bytes).toString("base64url")}export function safeEqual(a:string,b:string){const x=Buffer.from(a),y=Buffer.from(b);return x.length===y.length&&timingSafeEqual(x,y)}
