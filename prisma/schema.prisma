@@ -1,27 +1,337 @@
-datasource db { provider = "postgresql" url = env("DATABASE_URL") }
-generator client { provider = "prisma-client-js" }
-enum Role { GUEST USER SUPPORT CONTENT_MANAGER SELLER ADMIN SUPER_ADMIN }
-enum OrderStatus { PENDING PAYMENT_FAILED PAID CONFIRMED PROCESSING SHIPPED DELIVERED COMPLETED CANCELLED PARTIALLY_REFUNDED REFUNDED EXPIRED ON_HOLD DISPUTED }
-enum PaymentProvider { ZARINPAL STRIPE SANDBOX }
-enum TransactionStatus { PENDING SUCCEEDED FAILED }
-enum RefundStatus { REQUESTED SUBMITTED SUCCEEDED FAILED }
-enum ContentStatus { DRAFT PUBLISHED }
-model User { id String @id @default(cuid()) email String @unique phone String? name String? passwordHash String? role Role @default(USER) emailVerifiedAt DateTime? failedLoginCount Int @default(0) lockoutUntil DateTime? deletedAt DateTime? createdAt DateTime @default(now()) updatedAt DateTime @updatedAt sessions Session[] identities AuthIdentity[] orders Order[] auditLogs AuditLog[] notifications Notification[] tickets Ticket[] messages ChatMessage[] }
-model IpBan { id String @id @default(cuid()) ipHash String @unique failedLoginCount Int @default(0) blockedUntil DateTime? createdAt DateTime @default(now()) updatedAt DateTime @updatedAt @@index([blockedUntil]) }
-model Session { id String @id @default(cuid()) userId String tokenHash String @unique expiresAt DateTime rotatedFrom String? createdAt DateTime @default(now()) user User @relation(fields:[userId], references:[id], onDelete:Cascade) @@index([userId,expiresAt]) }
-model AuthIdentity { id String @id @default(cuid()) userId String provider String providerAccountId String createdAt DateTime @default(now()) user User @relation(fields:[userId], references:[id], onDelete:Cascade) @@unique([provider,providerAccountId]) @@index([userId]) }
-model OTPChallenge { id String @id @default(cuid()) destination String codeHash String expiresAt DateTime attempts Int @default(0) usedAt DateTime? createdAt DateTime @default(now()) @@index([destination,expiresAt]) }
-model Product { id String @id @default(cuid()) sku String @unique slug String @unique name String description String priceMinor Int currency String @default("GBP") stock Int @default(0) active Boolean @default(true) createdAt DateTime @default(now()) updatedAt DateTime @updatedAt cartItems CartItem[] orderItems OrderItem[] @@index([active,createdAt]) }
-model Cart { id String @id @default(cuid()) userId String? guestToken String? @unique createdAt DateTime @default(now()) updatedAt DateTime @updatedAt items CartItem[] }
-model CartItem { id String @id @default(cuid()) cartId String productId String quantity Int unitPriceMinor Int createdAt DateTime @default(now()) updatedAt DateTime @updatedAt cart Cart @relation(fields:[cartId],references:[id],onDelete:Cascade) product Product @relation(fields:[productId],references:[id]) @@unique([cartId,productId]) }
-model Order { id String @id @default(cuid()) idempotencyKey String? @unique userId String? status OrderStatus @default(PENDING) version Int @default(1) currency String subtotalMinor Int taxMinor Int @default(0) shippingMinor Int @default(0) discountMinor Int @default(0) totalMinor Int expiresAt DateTime? createdAt DateTime @default(now()) updatedAt DateTime @updatedAt user User? @relation(fields:[userId],references:[id],onDelete:SetNull) items OrderItem[] transactions Transaction[] refunds Refund[] paymentEvents PaymentEvent[] @@index([userId,createdAt]) @@index([status,expiresAt]) }
-model OrderItem { id String @id @default(cuid()) orderId String productId String sku String name String quantity Int unitPriceMinor Int totalMinor Int order Order @relation(fields:[orderId],references:[id],onDelete:Cascade) product Product @relation(fields:[productId],references:[id]) @@index([orderId]) }
-model Transaction { id String @id @default(cuid()) orderId String provider PaymentProvider status TransactionStatus @default(PENDING) amountMinor Int authority String? referenceId String? providerPaymentId String? idempotencyKey String @unique rawResultJson String? createdAt DateTime @default(now()) updatedAt DateTime @updatedAt order Order @relation(fields:[orderId],references:[id],onDelete:Restrict) @@index([orderId,status]) @@index([referenceId]) }
-model PaymentEvent { id String @id @default(cuid()) orderId String? provider PaymentProvider providerEventId String? eventType String verified Boolean @default(false) payloadJson String createdAt DateTime @default(now()) order Order? @relation(fields:[orderId],references:[id],onDelete:SetNull) @@unique([provider,providerEventId]) @@index([orderId,createdAt]) }
-model Refund { id String @id @default(cuid()) orderId String amountMinor Int provider PaymentProvider status RefundStatus @default(REQUESTED) providerReference String? idempotencyKey String @unique createdAt DateTime @default(now()) updatedAt DateTime @updatedAt order Order @relation(fields:[orderId],references:[id],onDelete:Restrict) @@index([orderId,status]) }
-model AuditLog { id String @id @default(cuid()) userId String? action String entity String entityId String requestId String? traceId String? oldValueJson String? newValueJson String? createdAt DateTime @default(now()) user User? @relation(fields:[userId],references:[id],onDelete:SetNull) @@index([entity,entityId,createdAt]) @@index([userId,createdAt]) }
-model Content { id String @id @default(cuid()) slug String @unique title String bodyHtml String status ContentStatus @default(DRAFT) publishedAt DateTime? createdAt DateTime @default(now()) updatedAt DateTime @updatedAt revisions ContentRevision[] }
-model ContentRevision { id String @id @default(cuid()) contentId String bodyHtml String version Int createdAt DateTime @default(now()) content Content @relation(fields:[contentId],references:[id],onDelete:Cascade) @@unique([contentId,version]) }
-model Notification { id String @id @default(cuid()) userId String type String payloadJson String priority String readAt DateTime? targetUrl String? createdAt DateTime @default(now()) user User @relation(fields:[userId],references:[id],onDelete:Cascade) @@index([userId,readAt,createdAt]) }
-model Ticket { id String @id @default(cuid()) userId String subject String status String @default("open") createdAt DateTime @default(now()) updatedAt DateTime @updatedAt user User @relation(fields:[userId],references:[id],onDelete:Cascade) @@index([userId,status]) }
-model ChatMessage { id String @id @default(cuid()) userId String roomId String body String version Int @default(1) editedAt DateTime? createdAt DateTime @default(now()) user User @relation(fields:[userId],references:[id],onDelete:Restrict) @@index([roomId,createdAt]) }
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  GUEST
+  USER
+  SUPPORT
+  CONTENT_MANAGER
+  SELLER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  PAYMENT_FAILED
+  PAID
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  COMPLETED
+  CANCELLED
+  PARTIALLY_REFUNDED
+  REFUNDED
+  EXPIRED
+  ON_HOLD
+  DISPUTED
+}
+
+enum PaymentProvider {
+  ZARINPAL
+  STRIPE
+  SANDBOX
+}
+
+enum TransactionStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+}
+
+enum RefundStatus {
+  REQUESTED
+  SUBMITTED
+  SUCCEEDED
+  FAILED
+}
+
+enum ContentStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model User {
+  id               String         @id @default(cuid())
+  email            String         @unique
+  phone            String?
+  name             String?
+  passwordHash     String?
+  role             Role           @default(USER)
+  emailVerifiedAt  DateTime?
+  failedLoginCount Int            @default(0)
+  lockoutUntil     DateTime?
+  deletedAt        DateTime?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  sessions         Session[]
+  identities       AuthIdentity[]
+  orders           Order[]
+  auditLogs        AuditLog[]
+  notifications    Notification[]
+  tickets          Ticket[]
+  messages         ChatMessage[]
+}
+
+model IpBan {
+  id               String   @id @default(cuid())
+  ipHash           String   @unique
+  failedLoginCount Int      @default(0)
+  blockedUntil     DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([blockedUntil])
+}
+
+model Session {
+  id         String   @id @default(cuid())
+  userId     String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  rotatedFrom String?
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model AuthIdentity {
+  id                String   @id @default(cuid())
+  userId            String
+  provider          String
+  providerAccountId String
+  createdAt         DateTime @default(now())
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model OTPChallenge {
+  id          String   @id @default(cuid())
+  destination String
+  codeHash    String
+  expiresAt   DateTime
+  attempts    Int      @default(0)
+  usedAt      DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([destination, expiresAt])
+}
+
+model Product {
+  id          String      @id @default(cuid())
+  sku         String      @unique
+  slug        String      @unique
+  name        String
+  description String
+  priceMinor  Int
+  currency    String      @default("GBP")
+  stock       Int         @default(0)
+  active      Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  cartItems   CartItem[]
+  orderItems  OrderItem[]
+
+  @@index([active, createdAt])
+}
+
+model Cart {
+  id         String     @id @default(cuid())
+  userId     String?
+  guestToken String?    @unique
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  items      CartItem[]
+}
+
+model CartItem {
+  id             String   @id @default(cuid())
+  cartId         String
+  productId      String
+  quantity       Int
+  unitPriceMinor Int
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  cart           Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product        Product  @relation(fields: [productId], references: [id])
+
+  @@unique([cartId, productId])
+}
+
+model Order {
+  id              String          @id @default(cuid())
+  idempotencyKey  String?         @unique
+  userId          String?
+  status          OrderStatus     @default(PENDING)
+  version         Int             @default(1)
+  currency        String
+  subtotalMinor   Int
+  taxMinor        Int             @default(0)
+  shippingMinor   Int             @default(0)
+  discountMinor   Int             @default(0)
+  totalMinor      Int
+  expiresAt       DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  user            User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  items           OrderItem[]
+  transactions    Transaction[]
+  refunds         Refund[]
+  paymentEvents   PaymentEvent[]
+
+  @@index([userId, createdAt])
+  @@index([status, expiresAt])
+}
+
+model OrderItem {
+  id             String  @id @default(cuid())
+  orderId        String
+  productId      String
+  sku            String
+  name           String
+  quantity       Int
+  unitPriceMinor Int
+  totalMinor     Int
+  order          Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product        Product @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+}
+
+model Transaction {
+  id               String            @id @default(cuid())
+  orderId          String
+  provider         PaymentProvider
+  status           TransactionStatus @default(PENDING)
+  amountMinor      Int
+  authority        String?
+  referenceId      String?
+  providerPaymentId String?
+  idempotencyKey   String            @unique
+  rawResultJson    String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  order            Order             @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([orderId, status])
+  @@index([referenceId])
+}
+
+model PaymentEvent {
+  id              String          @id @default(cuid())
+  orderId         String?
+  provider        PaymentProvider
+  providerEventId String?
+  eventType       String
+  verified        Boolean         @default(false)
+  payloadJson     String
+  createdAt       DateTime        @default(now())
+  order           Order?          @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@unique([provider, providerEventId])
+  @@index([orderId, createdAt])
+}
+
+model Refund {
+  id                String         @id @default(cuid())
+  orderId           String
+  amountMinor       Int
+  provider          PaymentProvider
+  status            RefundStatus   @default(REQUESTED)
+  providerReference String?
+  idempotencyKey    String         @unique
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  order             Order          @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([orderId, status])
+}
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  userId       String?
+  action       String
+  entity       String
+  entityId     String
+  requestId    String?
+  traceId      String?
+  oldValueJson String?
+  newValueJson String?
+  createdAt    DateTime @default(now())
+  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([entity, entityId, createdAt])
+  @@index([userId, createdAt])
+}
+
+model Content {
+  id          String            @id @default(cuid())
+  slug        String            @unique
+  title       String
+  bodyHtml    String
+  status      ContentStatus     @default(DRAFT)
+  publishedAt DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  revisions   ContentRevision[]
+}
+
+model ContentRevision {
+  id        String  @id @default(cuid())
+  contentId String
+  bodyHtml  String
+  version   Int
+  createdAt DateTime @default(now())
+  content   Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  @@unique([contentId, version])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  payloadJson String
+  priority  String
+  readAt    DateTime?
+  targetUrl String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt])
+}
+
+model Ticket {
+  id        String   @id @default(cuid())
+  userId    String
+  subject   String
+  status    String   @default("open")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  roomId    String
+  body      String
+  version   Int      @default(1)
+  editedAt  DateTime?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([roomId, createdAt])
+}
