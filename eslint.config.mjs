@@ -1,13 +1,9 @@
-import nextVitalsModule from "eslint-config-next/core-web-vitals.js";
+import { FlatCompat } from "@eslint/eslintrc";
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const nextVitals = Array.isArray(nextVitalsModule)
-  ? nextVitalsModule
-  : nextVitalsModule.default;
+const compat = new FlatCompat({
+  baseDirectory: dirname(fileURLToPath(import.meta.url)),
+});
 
-if (!Array.isArray(nextVitals)) {
-  throw new Error(
-    "Unable to load eslint-config-next/core-web-vitals as a flat config array.",
-  );
-}
-
-export default [...nextVitals];
+export default [...compat.extends("next/core-web-vitals")];
