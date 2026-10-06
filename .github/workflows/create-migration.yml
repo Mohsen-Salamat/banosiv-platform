@@ -1,0 +1,54 @@
+name: Create Prisma migration
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  migration:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma migration SQL
+        run: |
+          set -euo pipefail
+
+          mkdir -p prisma/migrations/0001_initial
+
+          npx prisma migrate diff \
+            --from-empty \
+            --to-schema-datamodel prisma/schema.prisma \
+            --script \
+            > prisma/migrations/0001_initial/migration.sql
+
+          test -s prisma/migrations/0001_initial/migration.sql
+
+      - name: Commit migration
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add prisma/migrations
+
+          if git diff --cached --quiet; then
+            echo "No migration changes."
+            exit 0
+          fi
+
+          git commit -m "chore: add initial Prisma migration"
+          git push origin HEAD:main
