@@ -1,1 +1,53 @@
-import Link from"next/link";import{db}from"@/lib/db";export const revalidate=3600;export default async function ProductsPage(){const ps=await db.product.findMany({where:{active:true},orderBy:{createdAt:"desc"}});return <section className="mx-auto max-w-7xl px-6 py-16"><div className="mb-10"><p className="text-xs uppercase tracking-[0.3em] text-muted">Collection</p><h1 className="mt-3 text-4xl font-semibold">Products</h1></div><div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{ps.map(p=><article key={p.id} className="rounded-xl border border-line bg-panel p-6"><p className="text-xs uppercase tracking-[0.2em] text-muted">{p.sku}</p><h2 className="mt-4 text-xl font-medium">{p.name}</h2><p className="mt-2 text-sm leading-6 text-muted">{p.description}</p><div className="mt-7 flex items-center justify-between"><span>£{(p.priceMinor/100).toFixed(2)}</span><Link className="inline-flex min-h-11 items-center rounded-xl border border-line px-4 text-sm" href={`/products/${p.id}`}>View</Link></div></article>)}</div></section>}
+import Link from "next/link";
+import { db } from "@/lib/db";
+
+export const dynamic = "force-dynamic";
+
+export default async function ProductsPage() {
+  const ps = await db.product.findMany({
+    where: { active: true },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return (
+    <section className="mx-auto max-w-7xl px-6 py-16">
+      <div className="mb-10">
+        <p className="text-xs uppercase tracking-[0.3em] text-muted">
+          Collection
+        </p>
+
+        <h1 className="mt-3 text-4xl font-semibold">Products</h1>
+      </div>
+
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {ps.map((p) => (
+          <article
+            key={p.id}
+            className="rounded-xl border border-line bg-panel p-6"
+          >
+            <p className="text-xs uppercase tracking-[0.2em] text-muted">
+              {p.sku}
+            </p>
+
+            <h2 className="mt-4 text-xl font-medium">{p.name}</h2>
+
+            <p className="mt-2 text-sm leading-6 text-muted">
+              {p.description}
+            </p>
+
+            <div className="mt-7 flex items-center justify-between">
+              <span>£{(p.priceMinor / 100).toFixed(2)}</span>
+
+              <Link
+                className="inline-flex min-h-11 items-center rounded-xl border border-line px-4 text-sm"
+                href={`/products/${p.id}`}
+              >
+                View
+              </Link>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+          }
