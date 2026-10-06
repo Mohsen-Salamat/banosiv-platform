@@ -1,0 +1,1 @@
+import{requireUser}from"@/lib/auth";import{jsonError}from"@/lib/http";export async function GET(req:Request){try{const u=await requireUser();return Response.json({id:u.id,email:u.email,name:u.name,role:u.role})}catch(e){return jsonError(e,req)}}

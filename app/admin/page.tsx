@@ -1,0 +1,5 @@
+import Link from "next/link";
+
+export default function AdminPage() {
+  return <section className="mx-auto max-w-7xl px-6 py-16"><p className="text-xs uppercase tracking-[0.3em] text-muted">Operations</p><h1 className="mt-3 text-4xl font-semibold">Admin Dashboard</h1><div className="mt-10 grid gap-5 md:grid-cols-3"><article className="rounded-xl border border-line bg-panel p-6"><h2 className="font-medium">Orders</h2><p className="mt-2 text-sm text-muted">Review state, audit, and payment status.</p><Link className="mt-6 inline-flex min-h-11 items-center rounded-xl border border-line px-4 text-sm" href="/api/v1/health">Health</Link></article><article className="rounded-xl border border-line bg-panel p-6"><h2 className="font-medium">Content</h2><p className="mt-2 text-sm text-muted">Revision and publishing controls are scheduled for Module 4.</p></article><article className="rounded-xl border border-line bg-panel p-6"><h2 className="font-medium">Security</h2><p className="mt-2 text-sm text-muted">RBAC, audit, rate limiting, and fail-closed payment behavior are architectural invariants.</p></article></div></section>;
+}
